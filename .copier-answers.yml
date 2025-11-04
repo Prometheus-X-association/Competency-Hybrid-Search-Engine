@@ -1,0 +1,10 @@
+# Changes here will be overwritten by Copier
+_commit: c761526
+_src_path: gh:inokufu/python-project-template
+author_email: contact@inokufu.com
+author_name: Inokufu
+min_python_version: '3.13'
+package_name: search_engine
+project_description: A search engine to allow users to index, manage, and search within
+    skills, with FastAPI and Qdrant.
+project_name: Competency Hybrid Search Engine

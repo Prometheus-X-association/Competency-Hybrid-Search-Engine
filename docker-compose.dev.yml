@@ -1,0 +1,43 @@
+services:
+  traefik:
+    command:
+      - "--api.insecure=true"
+      - "--api.dashboard=true"
+      - "--providers.docker=true"
+      - "--entrypoints.web.address=:80"
+      - "--log.level=DEBUG"
+      - "--accesslog=true"
+    ports:
+      - "80:80"
+      - "8080:8080"
+    labels:
+      - "traefik.enable=true"
+
+
+  qdrant:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.qdrant.rule=Host(`${DB_DOMAIN_NAME}`)"
+      - "traefik.http.routers.qdrant.entrypoints=web"
+      - "traefik.http.services.qdrant.loadbalancer.server.port=${DB_QDRANT_PORT}"
+
+  search-engine:
+    volumes:
+      - ./src:/app/src
+      - ./tests:/app/tests
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.search-engine.rule=Host(`${SEARCH_ENGINE_DOMAIN_NAME}`)"
+      - "traefik.http.routers.search-engine.entrypoints=web"
+      - "traefik.http.services.search-engine.loadbalancer.server.port=${SEARCH_ENGINE_PORT}"
+
+
+  data-importer:
+    volumes:
+      - ./src:/app/src
+      - ./tests:/app/tests
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.data-importer.rule=Host(`${DATA_IMPORTER_DOMAIN_NAME}`)"
+      - "traefik.http.routers.data-importer.entrypoints=web"
+      - "traefik.http.services.data-importer.loadbalancer.server.port=${DATA_IMPORTER_PORT}"

@@ -1,0 +1,48 @@
+services:
+  traefik:
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--api.dashboard=false"
+      - "--accesslog=true"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--certificatesresolvers.le.acme.tlschallenge=true"
+      - "--certificatesresolvers.le.acme.email=${LETSENCRYPT_EMAIL}"
+      - "--certificatesresolvers.le.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+    labels:
+      - "traefik.enable=true"
+
+
+  qdrant:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.qdrant.rule=Host(`${DB_DOMAIN_NAME}`)"
+      - "traefik.http.routers.qdrant.entrypoints=websecure"
+      - "traefik.http.routers.qdrant.tls=true"
+      - "traefik.http.routers.qdrant.tls.certresolver=le"
+      - "traefik.http.services.qdrant.loadbalancer.server.port=${DB_QDRANT_PORT}"
+
+
+  search-engine:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.search-engine.rule=Host(`${SEARCH_ENGINE_DOMAIN_NAME}`)"
+      - "traefik.http.routers.search-engine.entrypoints=websecure"
+      - "traefik.http.routers.search-engine.tls=true"
+      - "traefik.http.routers.search-engine.tls.certresolver=le"
+      - "traefik.http.services.search-engine.loadbalancer.server.port=${SEARCH_ENGINE_PORT}"
+
+  data-importer:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.data-importer.rule=Host(`${DATA_IMPORTER_DOMAIN_NAME}`)"
+      - "traefik.http.routers.data-importer.entrypoints=websecure"
+      - "traefik.http.routers.data-importer.tls=true"
+      - "traefik.http.routers.data-importer.tls.certresolver=le"
+      - "traefik.http.services.data-importer.loadbalancer.server.port=${DATA_IMPORTER_PORT}"

@@ -1,0 +1,96 @@
+# Reusable logging config
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "100m"
+    max-file: "14"
+    compress: "true"
+
+
+# Networks
+networks:
+  search-engine:
+    driver: bridge
+
+
+# Services
+services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: qdrant
+    networks:
+      - search-engine
+    volumes:
+      - ./volumes/data:/qdrant/storage
+    logging: *default-logging
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c ':> /dev/tcp/127.0.0.1/6333' || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    environment:
+      - QDRANT__SERVICE__HTTP_PORT=${DB_QDRANT_PORT:-6333}
+      - QDRANT__SERVICE__API_KEY=${DB_QDRANT_API_KEY:-my_api_key}
+
+
+  search-engine:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    container_name: search-engine
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - APP_INTERNAL_PORT=${SEARCH_ENGINE_PORT:-8000}
+    command: ["gunicorn", "src.search_engine.adapters.api.main:app"]
+    depends_on:
+      qdrant:
+        condition: service_healthy
+      traefik:
+        condition: service_started
+    networks:
+      - search-engine
+    volumes:
+      - ./volumes/models:/app/volumes/models
+    labels:
+      - "traefik.enable=false"
+    logging: *default-logging
+
+  data-importer:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    container_name: data-importer
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - APP_INTERNAL_PORT=${DATA_IMPORTER_PORT:-8000}
+    command: ["gunicorn", "src.data_importer.main:app"]
+    depends_on:
+      qdrant:
+        condition: service_healthy
+      traefik:
+        condition: service_started
+    networks:
+      - search-engine
+    labels:
+      - "traefik.enable=false"
+    logging: *default-logging
+
+
+  ## ----------------- Traefik -----------------
+  traefik:
+    image: traefik:v3.3.2
+    container_name: traefik
+    restart: unless-stopped
+    networks:
+      - search-engine
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./volumes/traefik_data:/letsencrypt
+    labels:
+      - "traefik.enable=false"
+    logging: *default-logging
